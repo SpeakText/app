@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:convert';
-import 'package:dio/dio.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import '../models/book.dart';

@@ -16,6 +16,9 @@ class BottomNavBarWidget extends StatelessWidget {
       currentIndex: currentIndex,
       onTap: onTap,
       type: BottomNavigationBarType.fixed,
+      selectedItemColor: const Color(0xFF4A4A4A),
+      unselectedItemColor: const Color(0xFFA0A0A0),
+      backgroundColor: Color(0xFFF5F5F5),
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
         BottomNavigationBarItem(icon: Icon(Icons.search), label: '검색'),

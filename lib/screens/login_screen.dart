@@ -106,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (_error != null) ...[
-                Text(_error!, style: const TextStyle(color: Colors.red)),
+                Text(_error!, style: const TextStyle(color: Color(0xFFD32F2F))),
                 const SizedBox(height: 12),
               ],
               if (_isLogin)

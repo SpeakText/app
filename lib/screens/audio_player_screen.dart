@@ -35,7 +35,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   List<String> _sentences = [];
   List<int> _voiceLengthInfo = [];
   int _currentPage = 0;
-  final int _sentencesPerPage = 3;
+  final int _sentencesPerPage = 5;
 
   @override
   void initState() {
@@ -172,24 +172,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
   }
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
-      child: Column(
-        children: [
-          Text(
-            widget.title,
-            style: Theme.of(context).textTheme.headlineSmall,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            widget.author,
-            style: Theme.of(context).textTheme.titleMedium,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
+    return SizedBox.shrink();
   }
 
   Widget _buildSentences() {
@@ -200,54 +183,153 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
       child: Text(
         _currentPageSentences.join(' '),
         style: const TextStyle(
-          color: Colors.black87,
+          color: Color(0xFF333333),
           fontSize: 20,
           fontWeight: FontWeight.w500,
-          height: 1.6,
+          height: 1.7,
         ),
-        textAlign: TextAlign.start,
+        textAlign: TextAlign.justify,
       ),
     );
   }
 
-  Widget _buildPageControls() {
+  Widget _buildPlayerBar() {
     if (_sentences.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ElevatedButton(onPressed: _goToPrevPage, child: const Text('이전')),
-          const SizedBox(width: 24),
-          Text('페이지 ${_currentPage + 1} / $_totalPages'),
-          const SizedBox(width: 24),
-          ElevatedButton(onPressed: _goToNextPage, child: const Text('다음')),
-        ],
+      padding: const EdgeInsets.only(top: 8, bottom: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Color(0xFFD0D0D0),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 16,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // 이전 버튼 (텍스트만, 배경색 추가)
+                TextButton(
+                  onPressed: _goToPrevPage,
+                  style: TextButton.styleFrom(
+                    backgroundColor: Color(0xFFF5F5F5),
+                    foregroundColor: Color(0xFF4A4A4A),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  child: const Text(
+                    '이전',
+                    style: TextStyle(
+                      color: Color(0xFF4A4A4A),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 32),
+                // Play/Pause 버튼 (원형, 흰색 아이콘)
+                TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 1.0, end: _playing ? 1.0 : 1.0),
+                  duration: const Duration(milliseconds: 120),
+                  builder: (context, scale, child) {
+                    return Transform.scale(
+                      scale: scale,
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFA0A0A0),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            _playing
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                          onPressed: () {
+                            setState(() {});
+                            if (!_playing) {
+                              _playCurrentPageAudio();
+                            } else {
+                              _player.pause();
+                            }
+                          },
+                          splashRadius: 36,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 32),
+                // 다음 버튼 (텍스트만, 배경색 추가)
+                TextButton(
+                  onPressed: _goToNextPage,
+                  style: TextButton.styleFrom(
+                    backgroundColor: Color(0xFFF5F5F5),
+                    foregroundColor: Color(0xFF4A4A4A),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  child: const Text(
+                    '다음',
+                    style: TextStyle(
+                      color: Color(0xFF4A4A4A),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '페이지 ${_currentPage + 1} / $_totalPages',
+              style: const TextStyle(
+                fontSize: 16,
+                color: Color(0xFF4A4A4A),
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildPlayButton() {
-    return IconButton(
-      iconSize: 64,
-      icon: Icon(
-        _playing ? Icons.pause_circle_filled : Icons.play_circle_filled,
-        color: Colors.deepPurple,
-      ),
-      onPressed: () {
-        if (!_playing) {
-          _playCurrentPageAudio();
-        } else {
-          _player.pause();
-        }
-      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('오디오북 재생')),
+      appBar: AppBar(title: Text(widget.title)),
       body:
           _ready
               ? Padding(
@@ -257,8 +339,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
                   children: [
                     _buildHeader(),
                     Expanded(child: _buildSentences()),
-                    _buildPageControls(),
-                    _buildPlayButton(),
+                    _buildPlayerBar(),
                   ],
                 ),
               )
