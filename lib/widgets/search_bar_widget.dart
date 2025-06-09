@@ -43,31 +43,36 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8.0),
-      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(40.0),
-        border: Border.all(color: Color(0xFFD0D0D0), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0xFFA0A0A0).withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
+    return Semantics(
+      label: '오디오북 검색 입력창',
+      textField: true,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8.0),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F5F5),
+          borderRadius: BorderRadius.circular(40.0),
+          border: Border.all(color: Color(0xFFD0D0D0), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0xFFA0A0A0).withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: widget.controller,
+          onChanged: widget.onChanged,
+          onSubmitted: widget.onSubmitted,
+          decoration: InputDecoration(
+            icon: const Icon(Icons.search, color: Color(0xFFA0A0A0)),
+            hintText: '오디오북 검색',
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 4),
+            hintStyle: const TextStyle(color: Color(0xFFD0D0D0), fontSize: 15),
+            labelText: '오디오북 검색',
           ),
-        ],
-      ),
-      child: TextField(
-        controller: widget.controller,
-        onChanged: widget.onChanged,
-        onSubmitted: widget.onSubmitted,
-        decoration: InputDecoration(
-          icon: const Icon(Icons.search, color: Color(0xFFA0A0A0)),
-          hintText: '오디오북 검색',
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 4),
-          hintStyle: const TextStyle(color: Color(0xFFD0D0D0), fontSize: 15),
         ),
       ),
     );
@@ -119,27 +124,31 @@ class _AnimatedPlaceholderSearchBarState
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: widget.controller,
-      onChanged: widget.onChanged,
-      onSubmitted: widget.onSubmitted,
-      decoration: InputDecoration(
-        icon: const Icon(Icons.search, color: Color(0xFFA0A0A0)),
-        hintText: null,
-        border: InputBorder.none,
-        contentPadding: const EdgeInsets.symmetric(vertical: 4),
-        hintStyle: const TextStyle(color: Color(0xFFD0D0D0)),
-        // Animated placeholder
-        prefixIcon: null,
-        suffixIcon: null,
-        label: AnimatedBuilder(
-          animation: _opacityAnim,
-          builder:
-              (context, child) =>
-                  Opacity(opacity: _opacityAnim.value, child: child),
-          child: const Text(
-            '오디오북 검색',
-            style: TextStyle(color: Color(0xFFD0D0D0), fontSize: 15),
+    return Semantics(
+      label: '오디오북 검색 입력창',
+      textField: true,
+      child: TextField(
+        controller: widget.controller,
+        onChanged: widget.onChanged,
+        onSubmitted: widget.onSubmitted,
+        decoration: InputDecoration(
+          icon: const Icon(Icons.search, color: Color(0xFFA0A0A0)),
+          hintText: null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+          hintStyle: const TextStyle(color: Color(0xFFD0D0D0)),
+          // Animated placeholder
+          prefixIcon: null,
+          suffixIcon: null,
+          label: AnimatedBuilder(
+            animation: _opacityAnim,
+            builder:
+                (context, child) =>
+                    Opacity(opacity: _opacityAnim.value, child: child),
+            child: const Text(
+              '오디오북 검색',
+              style: TextStyle(color: Color(0xFFD0D0D0), fontSize: 15),
+            ),
           ),
         ),
       ),

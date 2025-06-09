@@ -216,108 +216,121 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 이전 버튼 (텍스트만, 배경색 추가)
-                TextButton(
-                  onPressed: _goToPrevPage,
-                  style: TextButton.styleFrom(
-                    backgroundColor: Color(0xFFF5F5F5),
-                    foregroundColor: Color(0xFF4A4A4A),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    textStyle: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  child: const Text(
-                    '이전',
-                    style: TextStyle(
-                      color: Color(0xFF4A4A4A),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 32),
-                // Play/Pause 버튼 (원형, 흰색 아이콘)
-                TweenAnimationBuilder<double>(
-                  tween: Tween<double>(begin: 1.0, end: _playing ? 1.0 : 1.0),
-                  duration: const Duration(milliseconds: 120),
-                  builder: (context, scale, child) {
-                    return Transform.scale(
-                      scale: scale,
-                      child: Container(
-                        width: 64,
-                        height: 64,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFA0A0A0),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            _playing
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            color: Colors.white,
-                            size: 36,
-                          ),
-                          onPressed: () {
-                            setState(() {});
-                            if (!_playing) {
-                              _playCurrentPageAudio();
-                            } else {
-                              _player.pause();
-                            }
-                          },
-                          splashRadius: 36,
-                        ),
+                Semantics(
+                  button: true,
+                  label: '이전 페이지',
+                  child: TextButton(
+                    onPressed: _goToPrevPage,
+                    style: TextButton.styleFrom(
+                      backgroundColor: Color(0xFFF5F5F5),
+                      foregroundColor: Color(0xFF4A4A4A),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 22,
+                        vertical: 12,
                       ),
-                    );
-                  },
-                ),
-                const SizedBox(width: 32),
-                // 다음 버튼 (텍스트만, 배경색 추가)
-                TextButton(
-                  onPressed: _goToNextPage,
-                  style: TextButton.styleFrom(
-                    backgroundColor: Color(0xFFF5F5F5),
-                    foregroundColor: Color(0xFF4A4A4A),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 12,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      textStyle: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    textStyle: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                    child: const Text(
+                      '이전',
+                      style: TextStyle(
+                        color: Color(0xFF4A4A4A),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
-                  child: const Text(
-                    '다음',
-                    style: TextStyle(
-                      color: Color(0xFF4A4A4A),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                ),
+                const SizedBox(width: 32),
+                Semantics(
+                  button: true,
+                  label: _playing ? '일시정지' : '재생',
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 1.0, end: _playing ? 1.0 : 1.0),
+                    duration: const Duration(milliseconds: 120),
+                    builder: (context, scale, child) {
+                      return Transform.scale(
+                        scale: scale,
+                        child: Container(
+                          width: 64,
+                          height: 64,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFA0A0A0),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              _playing
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 36,
+                            ),
+                            onPressed: () {
+                              setState(() {});
+                              if (!_playing) {
+                                _playCurrentPageAudio();
+                              } else {
+                                _player.pause();
+                              }
+                            },
+                            splashRadius: 36,
+                            tooltip: _playing ? '일시정지' : '재생',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 32),
+                Semantics(
+                  button: true,
+                  label: '다음 페이지',
+                  child: TextButton(
+                    onPressed: _goToNextPage,
+                    style: TextButton.styleFrom(
+                      backgroundColor: Color(0xFFF5F5F5),
+                      foregroundColor: Color(0xFF4A4A4A),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 22,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      textStyle: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    child: const Text(
+                      '다음',
+                      style: TextStyle(
+                        color: Color(0xFF4A4A4A),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            Text(
-              '페이지 ${_currentPage + 1} / $_totalPages',
-              style: const TextStyle(
-                fontSize: 16,
-                color: Color(0xFF4A4A4A),
-                fontWeight: FontWeight.bold,
-                letterSpacing: -0.5,
+            Semantics(
+              label: '페이지 ${_currentPage + 1} / $_totalPages',
+              child: Text(
+                '페이지 ${_currentPage + 1} / $_totalPages',
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF4A4A4A),
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
               ),
             ),
           ],

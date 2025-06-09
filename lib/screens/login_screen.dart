@@ -114,31 +114,54 @@ class _LoginScreenState extends State<LoginScreen> {
                   key: _loginFormKey,
                   child: Column(
                     children: [
-                      TextFormField(
-                        decoration: const InputDecoration(labelText: '아이디'),
-                        onChanged: (v) => _loginId = v,
-                        validator:
-                            (v) => v == null || v.isEmpty ? '아이디를 입력하세요' : null,
+                      Semantics(
+                        label: '아이디 입력',
+                        textField: true,
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            labelText: '아이디',
+                            hintText: '아이디를 입력하세요',
+                          ),
+                          onChanged: (v) => _loginId = v,
+                          validator:
+                              (v) =>
+                                  v == null || v.isEmpty ? '아이디를 입력하세요' : null,
+                        ),
                       ),
-                      TextFormField(
-                        decoration: const InputDecoration(labelText: '비밀번호'),
-                        obscureText: true,
-                        onChanged: (v) => _loginPassword = v,
-                        validator:
-                            (v) =>
-                                v == null || v.isEmpty ? '비밀번호를 입력하세요' : null,
+                      Semantics(
+                        label: '비밀번호 입력',
+                        textField: true,
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            labelText: '비밀번호',
+                            hintText: '비밀번호를 입력하세요',
+                          ),
+                          obscureText: true,
+                          onChanged: (v) => _loginPassword = v,
+                          validator:
+                              (v) =>
+                                  v == null || v.isEmpty ? '비밀번호를 입력하세요' : null,
+                        ),
                       ),
                       const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: _loading ? null : _submitLogin,
-                        child:
-                            _loading
-                                ? const CircularProgressIndicator()
-                                : const Text('로그인'),
+                      Semantics(
+                        button: true,
+                        label: '로그인',
+                        child: ElevatedButton(
+                          onPressed: _loading ? null : _submitLogin,
+                          child:
+                              _loading
+                                  ? const CircularProgressIndicator()
+                                  : const Text('로그인'),
+                        ),
                       ),
-                      TextButton(
-                        onPressed: _loading ? null : _toggleMode,
-                        child: const Text('회원가입'),
+                      Semantics(
+                        button: true,
+                        label: '회원가입 화면으로 이동',
+                        child: TextButton(
+                          onPressed: _loading ? null : _toggleMode,
+                          child: const Text('회원가입'),
+                        ),
                       ),
                     ],
                   ),
@@ -148,43 +171,82 @@ class _LoginScreenState extends State<LoginScreen> {
                   key: _signupFormKey,
                   child: Column(
                     children: [
-                      TextFormField(
-                        decoration: const InputDecoration(labelText: '아이디'),
-                        onChanged: (v) => _signupId = v,
-                        validator:
-                            (v) => v == null || v.isEmpty ? '아이디를 입력하세요' : null,
+                      Semantics(
+                        label: '아이디 입력',
+                        textField: true,
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            labelText: '아이디',
+                            hintText: '아이디를 입력하세요',
+                          ),
+                          onChanged: (v) => _signupId = v,
+                          validator:
+                              (v) =>
+                                  v == null || v.isEmpty ? '아이디를 입력하세요' : null,
+                        ),
                       ),
-                      TextFormField(
-                        decoration: const InputDecoration(labelText: '비밀번호'),
-                        obscureText: true,
-                        onChanged: (v) => _signupPassword = v,
-                        validator:
-                            (v) =>
-                                v == null || v.isEmpty ? '비밀번호를 입력하세요' : null,
+                      Semantics(
+                        label: '비밀번호 입력',
+                        textField: true,
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            labelText: '비밀번호',
+                            hintText: '비밀번호를 입력하세요',
+                          ),
+                          obscureText: true,
+                          onChanged: (v) => _signupPassword = v,
+                          validator:
+                              (v) =>
+                                  v == null || v.isEmpty ? '비밀번호를 입력하세요' : null,
+                        ),
                       ),
-                      TextFormField(
-                        decoration: const InputDecoration(labelText: '이름'),
-                        onChanged: (v) => _signupName = v,
-                        validator:
-                            (v) => v == null || v.isEmpty ? '이름을 입력하세요' : null,
+                      Semantics(
+                        label: '이름 입력',
+                        textField: true,
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            labelText: '이름',
+                            hintText: '이름을 입력하세요',
+                          ),
+                          onChanged: (v) => _signupName = v,
+                          validator:
+                              (v) =>
+                                  v == null || v.isEmpty ? '이름을 입력하세요' : null,
+                        ),
                       ),
-                      TextFormField(
-                        decoration: const InputDecoration(labelText: '이메일'),
-                        onChanged: (v) => _signupEmail = v,
-                        validator:
-                            (v) => v == null || v.isEmpty ? '이메일을 입력하세요' : null,
+                      Semantics(
+                        label: '이메일 입력',
+                        textField: true,
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            labelText: '이메일',
+                            hintText: '이메일을 입력하세요',
+                          ),
+                          onChanged: (v) => _signupEmail = v,
+                          validator:
+                              (v) =>
+                                  v == null || v.isEmpty ? '이메일을 입력하세요' : null,
+                        ),
                       ),
                       const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: _loading ? null : _submitSignup,
-                        child:
-                            _loading
-                                ? const CircularProgressIndicator()
-                                : const Text('회원가입'),
+                      Semantics(
+                        button: true,
+                        label: '회원가입',
+                        child: ElevatedButton(
+                          onPressed: _loading ? null : _submitSignup,
+                          child:
+                              _loading
+                                  ? const CircularProgressIndicator()
+                                  : const Text('회원가입'),
+                        ),
                       ),
-                      TextButton(
-                        onPressed: _loading ? null : _toggleMode,
-                        child: const Text('로그인'),
+                      Semantics(
+                        button: true,
+                        label: '로그인 화면으로 이동',
+                        child: TextButton(
+                          onPressed: _loading ? null : _toggleMode,
+                          child: const Text('로그인'),
+                        ),
                       ),
                     ],
                   ),

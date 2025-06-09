@@ -26,9 +26,13 @@ class ProfileScreen extends StatelessWidget {
                 await authService.signout();
                 onLogout?.call();
               },
-              child: const Text(
-                '로그아웃',
-                style: TextStyle(color: Color(0xFFA0A0A0)),
+              child: Semantics(
+                button: true,
+                label: '로그아웃',
+                child: const Text(
+                  '로그아웃',
+                  style: TextStyle(color: Color(0xFFA0A0A0)),
+                ),
               ),
             ),
           ],

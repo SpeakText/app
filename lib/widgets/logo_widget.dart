@@ -7,9 +7,12 @@ class LogoWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8.0),
-      child: Icon(Icons.book, size: 36, color: Color(0xFF4A4A4A)),
+    return Semantics(
+      label: '앱 로고',
+      child: Padding(
+        padding: const EdgeInsets.only(left: 8.0),
+        child: Icon(Icons.book, size: 36, color: Color(0xFF4A4A4A)),
+      ),
     );
   }
 }

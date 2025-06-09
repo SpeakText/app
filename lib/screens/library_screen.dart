@@ -62,60 +62,72 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 separatorBuilder: (_, __) => const Divider(),
                 itemBuilder: (context, index) {
                   final book = _books[index];
-                  return ListTile(
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child:
-                          (() {
-                            final fileName =
-                                book['coverUrl'].toString().split('/').last;
-                            final assetPath = 'assets/$fileName';
-                            return Image.asset(
-                              assetPath,
-                              width: 48,
-                              height: 64,
-                              fit: BoxFit.cover,
-                              errorBuilder:
-                                  (context, error, stackTrace) => Container(
-                                    width: 48,
-                                    height: 64,
-                                    color: Colors.grey[300],
-                                    child: const Icon(
-                                      Icons.broken_image,
-                                      size: 24,
+                  return Semantics(
+                    label: '책 제목: \\${book['title']}, 저자: \\${book['author']}',
+                    button: true,
+                    child: ListTile(
+                      leading: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child:
+                            (() {
+                              final fileName =
+                                  book['coverUrl'].toString().split('/').last;
+                              final assetPath = 'assets/$fileName';
+                              return Image.asset(
+                                assetPath,
+                                width: 48,
+                                height: 64,
+                                fit: BoxFit.cover,
+                                semanticLabel: '책 표지: \\${book['title']}',
+                                errorBuilder:
+                                    (context, error, stackTrace) => Semantics(
+                                      label: '표지 이미지 없음',
+                                      child: Container(
+                                        width: 48,
+                                        height: 64,
+                                        color: Colors.grey[300],
+                                        child: const Icon(
+                                          Icons.broken_image,
+                                          size: 24,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                            );
-                          })(),
-                    ),
-                    title: Text(
-                      book['title'] ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      book['author'] ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(
-                        Icons.play_arrow,
-                        color: Colors.deepPurple,
+                              );
+                            })(),
                       ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder:
-                                (_) => AudioPlayerScreen(
-                                  filePath: book['audioPath'],
-                                  title: book['title'] ?? '',
-                                  author: book['author'] ?? '',
-                                ),
+                      title: Text(
+                        book['title'] ?? '',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        book['author'] ?? '',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: Semantics(
+                        button: true,
+                        label: '오디오북 재생',
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.play_arrow,
+                            color: Colors.deepPurple,
                           ),
-                        );
-                      },
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (_) => AudioPlayerScreen(
+                                      filePath: book['audioPath'],
+                                      title: book['title'] ?? '',
+                                      author: book['author'] ?? '',
+                                    ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   );
                 },

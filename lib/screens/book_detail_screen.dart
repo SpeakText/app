@@ -100,26 +100,33 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   Widget _buildCover() {
     final fileName = widget.book.coverUrl.split('/').last;
     final assetPath = 'assets/$fileName';
-    return Container(
-      margin: const EdgeInsets.only(top: 32, bottom: 24),
-      alignment: Alignment.topCenter,
-      child: Material(
-        elevation: 8,
-        borderRadius: BorderRadius.circular(24),
-        child: ClipRRect(
+    return Semantics(
+      label: '책 표지: ${widget.book.title}',
+      child: Container(
+        margin: const EdgeInsets.only(top: 32, bottom: 24),
+        alignment: Alignment.topCenter,
+        child: Material(
+          elevation: 8,
           borderRadius: BorderRadius.circular(24),
-          child: Image.asset(
-            assetPath,
-            width: 220,
-            height: 320,
-            fit: BoxFit.cover,
-            errorBuilder:
-                (context, error, stackTrace) => Container(
-                  width: 220,
-                  height: 320,
-                  color: Color(0xFFD0D0D0),
-                  child: const Icon(Icons.broken_image, size: 48),
-                ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Image.asset(
+              assetPath,
+              width: 220,
+              height: 320,
+              fit: BoxFit.cover,
+              semanticLabel: '${widget.book.title} 표지 이미지',
+              errorBuilder:
+                  (context, error, stackTrace) => Semantics(
+                    label: '표지 이미지 없음',
+                    child: Container(
+                      width: 220,
+                      height: 320,
+                      color: Color(0xFFD0D0D0),
+                      child: const Icon(Icons.broken_image, size: 48),
+                    ),
+                  ),
+            ),
           ),
         ),
       ),
@@ -156,26 +163,34 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         children: [
           Expanded(
             flex: 7,
-            child: ElevatedButton.icon(
-              onPressed: _downloadAudio,
-              icon: const Icon(Icons.download),
-              label: const Text('오디오북 다운로드'),
-              style: buttonStyle.copyWith(
-                backgroundColor: WidgetStateProperty.all(Color(0xFF4A4A4A)),
-                foregroundColor: WidgetStateProperty.all(Color(0xFFF5F5F5)),
+            child: Semantics(
+              button: true,
+              label: '오디오북 다운로드',
+              child: ElevatedButton.icon(
+                onPressed: _downloadAudio,
+                icon: const Icon(Icons.download),
+                label: const Text('오디오북 다운로드'),
+                style: buttonStyle.copyWith(
+                  backgroundColor: WidgetStateProperty.all(Color(0xFF4A4A4A)),
+                  foregroundColor: WidgetStateProperty.all(Color(0xFFF5F5F5)),
+                ),
               ),
             ),
           ),
           const SizedBox(width: 16),
           Expanded(
             flex: 3,
-            child: ElevatedButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.delete),
-              label: const Text('삭제'),
-              style: buttonStyle.copyWith(
-                backgroundColor: WidgetStateProperty.all(Color(0xFFD0D0D0)),
-                foregroundColor: WidgetStateProperty.all(Color(0xFFF5F5F5)),
+            child: Semantics(
+              button: true,
+              label: '삭제 비활성화',
+              child: ElevatedButton.icon(
+                onPressed: null,
+                icon: const Icon(Icons.delete),
+                label: const Text('삭제'),
+                style: buttonStyle.copyWith(
+                  backgroundColor: WidgetStateProperty.all(Color(0xFFD0D0D0)),
+                  foregroundColor: WidgetStateProperty.all(Color(0xFFF5F5F5)),
+                ),
               ),
             ),
           ),
@@ -196,26 +211,34 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         children: [
           Expanded(
             flex: 7,
-            child: ElevatedButton.icon(
-              onPressed: _goToPlayer,
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('오디오북 재생'),
-              style: buttonStyle.copyWith(
-                backgroundColor: WidgetStateProperty.all(Color(0xFF4A4A4A)),
-                foregroundColor: WidgetStateProperty.all(Color(0xFFF5F5F5)),
+            child: Semantics(
+              button: true,
+              label: '오디오북 재생',
+              child: ElevatedButton.icon(
+                onPressed: _goToPlayer,
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('오디오북 재생'),
+                style: buttonStyle.copyWith(
+                  backgroundColor: WidgetStateProperty.all(Color(0xFF4A4A4A)),
+                  foregroundColor: WidgetStateProperty.all(Color(0xFFF5F5F5)),
+                ),
               ),
             ),
           ),
           const SizedBox(width: 16),
           Expanded(
             flex: 3,
-            child: ElevatedButton.icon(
-              onPressed: _deleteAudioBook,
-              icon: const Icon(Icons.delete),
-              label: const Text('삭제'),
-              style: buttonStyle.copyWith(
-                backgroundColor: WidgetStateProperty.all(Color(0xFFD32F2F)),
-                foregroundColor: WidgetStateProperty.all(Color(0xFFF5F5F5)),
+            child: Semantics(
+              button: true,
+              label: '오디오북 삭제',
+              child: ElevatedButton.icon(
+                onPressed: _deleteAudioBook,
+                icon: const Icon(Icons.delete),
+                label: const Text('삭제'),
+                style: buttonStyle.copyWith(
+                  backgroundColor: WidgetStateProperty.all(Color(0xFFD32F2F)),
+                  foregroundColor: WidgetStateProperty.all(Color(0xFFF5F5F5)),
+                ),
               ),
             ),
           ),
@@ -260,7 +283,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           ),
           const SizedBox(height: 12),
           const Text(
-            '완벽한 알리바이를 만든 천재 수학자 이시가미 데츠야와 그 알리바이를 파헤치는 천재 물리학자이자 "탐정 갈릴레오"란 별명을 가진 유카와 마나부의 대결을 풀어내고 있다. 사랑과 ‘헌신’이라는 고전적이며 낭만적인 테제를 따르고 있는게 특징이다.',
+            '완벽한 알리바이를 만든 천재 수학자 이시가미 데츠야와 그 알리바이를 파헤치는 천재 물리학자이자 "탐정 갈릴레오"란 별명을 가진 유카와 마나부의 대결을 풀어내고 있다. 사랑과 헌신이라는 고전적이며 낭만적인 테제를 따르고 있는게 특징이다.',
             style: TextStyle(
               fontSize: 15,
               color: Color(0xFF333333),
