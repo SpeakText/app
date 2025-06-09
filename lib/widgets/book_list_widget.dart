@@ -23,7 +23,7 @@ class BookListWidget extends StatelessWidget {
         itemBuilder: (context, index) {
           final book = books[index];
           return Semantics(
-            label: '책 제목: {book.title}, 저자: {book.authorName}',
+            label: '책 제목: ${book.title}, 저자: ${book.authorName}',
             button: true,
             child: GestureDetector(
               onTap: () => onBookTap(book),

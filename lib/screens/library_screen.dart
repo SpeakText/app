@@ -63,7 +63,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 itemBuilder: (context, index) {
                   final book = _books[index];
                   return Semantics(
-                    label: '책 제목: \\${book['title']}, 저자: \\${book['author']}',
+                    label: '책 제목: ${book['title']}, 저자: ${book['author']}',
                     button: true,
                     child: ListTile(
                       leading: ClipRRect(
