@@ -25,6 +25,7 @@ class BookListWidget extends StatelessWidget {
           return Semantics(
             label: '책 제목: ${book.title}, 저자: ${book.authorName}',
             button: true,
+            excludeSemantics: true,
             child: GestureDetector(
               onTap: () => onBookTap(book),
               child: Column(

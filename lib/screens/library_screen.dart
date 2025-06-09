@@ -65,6 +65,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   return Semantics(
                     label: '책 제목: ${book['title']}, 저자: ${book['author']}',
                     button: true,
+                    excludeSemantics: true,
                     child: ListTile(
                       leading: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
