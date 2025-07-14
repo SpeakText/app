@@ -1,362 +1,495 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_session/audio_session.dart';
-import 'dart:async';
-import 'dart:io';
-import 'dart:convert';
-import 'package:path_provider/path_provider.dart';
+import '../models/book.dart';
 
-/// 오디오북 재생 화면
 class AudioPlayerScreen extends StatefulWidget {
-  final String filePath;
-  final String title;
-  final String author;
-  const AudioPlayerScreen({
-    super.key,
-    required this.filePath,
-    required this.title,
-    required this.author,
-  });
+  final Book book;
+
+  const AudioPlayerScreen({super.key, required this.book});
 
   @override
   State<AudioPlayerScreen> createState() => _AudioPlayerScreenState();
 }
 
 class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
-  late AudioPlayer _player;
-  late StreamSubscription<Duration> _positionSub;
-  late StreamSubscription<PlayerState> _stateSub;
+  late AudioPlayer _audioPlayer;
+  bool _isInitialized = false;
+  bool _isPlaying = false;
+  bool _isLoading = true;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
-  bool _playing = false;
-  bool _ready = false;
-
-  // 페이지/문장 관련 상태
-  List<String> _sentences = [];
-  List<int> _voiceLengthInfo = [];
-  int _currentPage = 0;
-  final int _sentencesPerPage = 5;
+  double _playbackSpeed = 1.0;
 
   @override
   void initState() {
     super.initState();
-    _initAudio();
-  }
-
-  Future<void> _initAudio() async {
-    _player = AudioPlayer();
-    final session = await AudioSession.instance;
-    await session.configure(const AudioSessionConfiguration.music());
-    await _player.setFilePath(widget.filePath);
-    _duration = _player.duration ?? Duration.zero;
-    _ready = true;
-    _positionSub = _player.positionStream.listen(_onPositionChanged);
-    _stateSub = _player.playerStateStream.listen(_onPlayerStateChanged);
-    await _loadBookData();
-    setState(() {});
-  }
-
-  void _onPositionChanged(Duration pos) {
-    setState(() {
-      _position = pos;
-    });
-  }
-
-  void _onPlayerStateChanged(PlayerState state) {
-    setState(() {
-      _playing = state.playing;
-    });
-  }
-
-  Future<void> _loadBookData() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final id = widget.filePath.split('/').last.split('_').first;
-    final sentencesFile = File('${dir.path}/${id}_sentences.json');
-    final voiceFile = File('${dir.path}/${id}_voice_length.json');
-    if (await sentencesFile.exists()) {
-      final sentences = await sentencesFile.readAsString();
-      _sentences = List<String>.from(jsonDecode(sentences));
-    }
-    if (await voiceFile.exists()) {
-      final voiceInfo = await voiceFile.readAsString();
-      _voiceLengthInfo = List<int>.from(jsonDecode(voiceInfo));
-      if (_voiceLengthInfo.isNotEmpty && _duration.inMilliseconds > 0) {
-        if (_voiceLengthInfo.last < _duration.inMilliseconds) {
-          _voiceLengthInfo.add(_duration.inMilliseconds);
-        }
-      }
-    }
-  }
-
-  int get _pageStartIdx => _currentPage * _sentencesPerPage;
-  int get _pageEndIdx =>
-      ((_currentPage + 1) * _sentencesPerPage).clamp(0, _sentences.length);
-  int get _totalPages => (_sentences.length / _sentencesPerPage).ceil();
-
-  List<String> get _currentPageSentences =>
-      _sentences.isEmpty ? [] : _sentences.sublist(_pageStartIdx, _pageEndIdx);
-
-  Future<void> _playCurrentPageAudio() async {
-    if (_voiceLengthInfo.length <= _pageStartIdx + 1) return;
-    final startMs = _voiceLengthInfo[_pageStartIdx];
-    await _player.seek(Duration(milliseconds: startMs));
-    _player.play();
-    _positionSub.cancel();
-    _positionSub = _player.positionStream.listen((pos) {
-      final currentMs = pos.inMilliseconds;
-      final startMs = _voiceLengthInfo[_pageStartIdx];
-      final endIdx =
-          _pageEndIdx < _voiceLengthInfo.length
-              ? _pageEndIdx
-              : _voiceLengthInfo.length - 1;
-      final endMs = _voiceLengthInfo[endIdx];
-      print('[AUDIO LOG] current position: \\$currentMs ms');
-      if (currentMs >= endMs - 100) {
-        // 페이지가 넘어갈 때 상세 로그 출력
-        print(
-          '[PAGE TURN] page: \\${_currentPage + 1}/$_totalPages, '
-          'sentenceIdx: \\$_pageStartIdx~\\${_pageEndIdx - 1}, '
-          'startMs: \\$startMs, endMs: \\$endMs, currentMs: \\$currentMs',
-        );
-        if (_pageEndIdx < _sentences.length) {
-          setState(() {
-            _currentPage++;
-          });
-          _playCurrentPageAudio();
-        } else {
-          _player.pause();
-        }
-      }
-    });
-  }
-
-  void _goToPrevPage() {
-    if (_currentPage > 0) {
-      setState(() {
-        _currentPage--;
-      });
-      _playCurrentPageAudio();
-    }
-  }
-
-  void _goToNextPage() {
-    if (_pageEndIdx < _sentences.length) {
-      setState(() {
-        _currentPage++;
-      });
-      _playCurrentPageAudio();
-    }
+    _initializeAudioPlayer();
   }
 
   @override
   void dispose() {
-    _positionSub.cancel();
-    _stateSub.cancel();
-    _player.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
-  void _togglePlay() {
-    if (_playing) {
-      _player.pause();
+  /// 오디오 플레이어 초기화
+  Future<void> _initializeAudioPlayer() async {
+    try {
+      _audioPlayer = AudioPlayer();
+
+      // 오디오 세션 초기화
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration.speech());
+
+      // 오디오 파일 로드
+      final audioPath =
+          'assets/audio/${widget.book.identificationNumber}_merged.mp3';
+
+      if (kDebugMode) {
+        debugPrint('Loading audio file: $audioPath');
+      }
+
+      await _audioPlayer.setAsset(audioPath);
+
+      // 리스너 설정
+      _audioPlayer.durationStream.listen((duration) {
+        if (mounted) {
+          setState(() {
+            _duration = duration ?? Duration.zero;
+          });
+        }
+      });
+
+      _audioPlayer.positionStream.listen((position) {
+        if (mounted) {
+          setState(() {
+            _position = position;
+          });
+        }
+      });
+
+      _audioPlayer.playerStateStream.listen((state) {
+        if (mounted) {
+          setState(() {
+            _isPlaying = state.playing;
+            _isLoading =
+                state.processingState == ProcessingState.loading ||
+                state.processingState == ProcessingState.buffering;
+          });
+        }
+      });
+
+      setState(() {
+        _isInitialized = true;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('오디오 초기화 에러: $e');
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("오디오 파일을 불러올 수 없습니다."),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// 재생/일시정지 토글
+  Future<void> _togglePlayPause() async {
+    if (!_isInitialized) return;
+
+    try {
+      if (_isPlaying) {
+        await _audioPlayer.pause();
+      } else {
+        // 2초 지연 후 재생
+        await Future.delayed(const Duration(seconds: 2));
+        await _audioPlayer.play();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('재생/정지 에러: $e');
+      }
+    }
+  }
+
+  /// 뒤로 30초 이동
+  Future<void> _seekBackward() async {
+    if (!_isInitialized) return;
+
+    final newPosition = _position - const Duration(seconds: 60);
+    final targetPosition =
+        newPosition < Duration.zero ? Duration.zero : newPosition;
+
+    await _audioPlayer.seek(targetPosition);
+  }
+
+  /// 앞으로 30초 이동
+  Future<void> _seekForward() async {
+    if (!_isInitialized) return;
+
+    final newPosition = _position + const Duration(seconds: 60);
+    final targetPosition = newPosition > _duration ? _duration : newPosition;
+
+    await _audioPlayer.seek(targetPosition);
+  }
+
+  /// 재생 속도 변경
+  Future<void> _changePlaybackSpeed() async {
+    if (!_isInitialized) return;
+
+    double newSpeed;
+    switch (_playbackSpeed) {
+      case 0.5:
+        newSpeed = 0.75;
+        break;
+      case 0.75:
+        newSpeed = 1.0;
+        break;
+      case 1.0:
+        newSpeed = 1.25;
+        break;
+      case 1.25:
+        newSpeed = 1.5;
+        break;
+      case 1.5:
+        newSpeed = 2.0;
+        break;
+      case 2.0:
+        newSpeed = 0.5;
+        break;
+      default:
+        newSpeed = 1.0;
+    }
+
+    await _audioPlayer.setSpeed(newSpeed);
+    setState(() {
+      _playbackSpeed = newSpeed;
+    });
+  }
+
+  /// 시간을 포맷팅
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     } else {
-      _player.play();
+      return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     }
-  }
-
-  void _seek(double value) {
-    final newPos = Duration(
-      milliseconds: (value * _duration.inMilliseconds).toInt(),
-    );
-    _player.seek(newPos);
-  }
-
-  Widget _buildHeader() {
-    return SizedBox.shrink();
-  }
-
-  Widget _buildSentences() {
-    if (_sentences.isEmpty) {
-      return const Center(child: Text('책 내용이 없습니다.'));
-    }
-    return Center(
-      child: Text(
-        _currentPageSentences.join(' '),
-        style: const TextStyle(
-          color: Color(0xFF333333),
-          fontSize: 20,
-          fontWeight: FontWeight.w500,
-          height: 1.7,
-        ),
-        textAlign: TextAlign.justify,
-      ),
-    );
-  }
-
-  Widget _buildPlayerBar() {
-    if (_sentences.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 8),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Color(0xFFD0D0D0),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x33000000),
-              blurRadius: 16,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Semantics(
-                  button: true,
-                  label: '이전 페이지',
-                  child: TextButton(
-                    onPressed: _goToPrevPage,
-                    style: TextButton.styleFrom(
-                      backgroundColor: Color(0xFFF5F5F5),
-                      foregroundColor: Color(0xFF4A4A4A),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      textStyle: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    child: const Text(
-                      '이전',
-                      style: TextStyle(
-                        color: Color(0xFF4A4A4A),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 32),
-                Semantics(
-                  button: true,
-                  label: _playing ? '일시정지' : '재생',
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 1.0, end: _playing ? 1.0 : 1.0),
-                    duration: const Duration(milliseconds: 120),
-                    builder: (context, scale, child) {
-                      return Transform.scale(
-                        scale: scale,
-                        child: Container(
-                          width: 64,
-                          height: 64,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFA0A0A0),
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            icon: Icon(
-                              _playing
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              color: Colors.white,
-                              size: 36,
-                            ),
-                            onPressed: () {
-                              setState(() {});
-                              if (!_playing) {
-                                _playCurrentPageAudio();
-                              } else {
-                                _player.pause();
-                              }
-                            },
-                            splashRadius: 36,
-                            tooltip: _playing ? '일시정지' : '재생',
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 32),
-                Semantics(
-                  button: true,
-                  label: '다음 페이지',
-                  child: TextButton(
-                    onPressed: _goToNextPage,
-                    style: TextButton.styleFrom(
-                      backgroundColor: Color(0xFFF5F5F5),
-                      foregroundColor: Color(0xFF4A4A4A),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      textStyle: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    child: const Text(
-                      '다음',
-                      style: TextStyle(
-                        color: Color(0xFF4A4A4A),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Semantics(
-              label: '페이지 ${_currentPage + 1} / $_totalPages',
-              child: Text(
-                '페이지 ${_currentPage + 1} / $_totalPages',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF4A4A4A),
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
-      body:
-          _ready
-              ? Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _buildHeader(),
-                    Expanded(child: _buildSentences()),
-                    _buildPlayerBar(),
-                  ],
+      appBar: AppBar(
+        title: Text(widget.book.title),
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back),
+        ),
+      ),
+      body: _buildPlayerScreen(),
+    );
+  }
+
+  /// 플레이어 화면
+  Widget _buildPlayerScreen() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 1. 재생/일시정지 버튼
+              _buildPlayPauseButton(),
+              const SizedBox(height: 24),
+              // 2. 30초 이동/속도 조절 버튼
+              _buildControlButtons(excludePlayPause: true),
+              const SizedBox(height: 24),
+              // 3. 진행률 영역
+              Column(
+                children: [
+                  _buildProgressDisplay(),
+                  const SizedBox(height: 16),
+                  _buildProgressSlider(),
+                ],
+              ),
+              const SizedBox(height: 24),
+              // 4. 책 정보 (가장 마지막)
+              _buildBookInfo(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 책 정보 표시 위젯
+  Widget _buildBookInfo() {
+    return Semantics(
+      label: "현재 재생중인 책: ${widget.book.title}",
+      child: Column(
+        children: [
+          ExcludeSemantics(
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child:
+                    widget.book.coverUrl.isNotEmpty
+                        ? Image.asset(
+                          'assets/${widget.book.coverUrl}',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[300],
+                              child: Icon(
+                                Icons.book,
+                                size: 80,
+                                color: Colors.grey[600],
+                              ),
+                            );
+                          },
+                        )
+                        : Container(
+                          color: Colors.grey[300],
+                          child: Icon(
+                            Icons.book,
+                            size: 80,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+          ExcludeSemantics(
+            child: Text(
+              widget.book.title,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 진행률 표시 위젯
+  Widget _buildProgressDisplay() {
+    return Semantics(
+      label:
+          "재생 진행률: 현재 위치 ${_formatDuration(_position)}, 총 길이 ${_formatDuration(_duration)}",
+      child: ExcludeSemantics(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              _formatDuration(_position),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            Text(
+              _formatDuration(_duration),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 진행률 슬라이더 위젯
+  Widget _buildProgressSlider() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          label: "오디오 탐색 슬라이더",
+          value:
+              "${(_position.inSeconds / (_duration.inSeconds == 0 ? 1 : _duration.inSeconds) * 100).toStringAsFixed(0)} 퍼센트, 현재 위치 ${_formatDuration(_position)}",
+          hint: "좌우로 쓸어 값을 조절할 수 있습니다.",
+          slider: true,
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 8,
+              activeTrackColor: Colors.white,
+              inactiveTrackColor: Colors.white.withOpacity(0.3),
+              thumbColor: Colors.white,
+              overlayColor: Colors.white.withOpacity(0.2),
+              thumbShape: const RoundSliderThumbShape(
+                enabledThumbRadius: 14,
+                elevation: 4,
+              ),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 22),
+            ),
+            child: Slider(
+              value: _position.inSeconds.toDouble(),
+              min: 0,
+              max:
+                  _duration.inSeconds.toDouble() > 0
+                      ? _duration.inSeconds.toDouble()
+                      : 1,
+              onChanged: (value) async {
+                await _audioPlayer.seek(Duration(seconds: value.toInt()));
+              },
+              semanticFormatterCallback: (double value) {
+                return _formatDuration(Duration(seconds: value.round()));
+              },
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _formatDuration(_position),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
                 ),
-              )
-              : const Center(child: CircularProgressIndicator()),
+              ),
+              Text(
+                _formatDuration(_duration),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 컨트롤 버튼 위젯
+  Widget _buildControlButtons({bool excludePlayPause = false}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // 1번째 줄: 되감기, (재생/일시정지), 빨리감기
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              flex: 3,
+              child: _buildTextButton(
+                onPressed: _seekBackward,
+                label: '60초 뒤로',
+              ),
+            ),
+            const SizedBox(width: 12),
+            if (!excludePlayPause)
+              Expanded(flex: 4, child: _buildPlayPauseButton()),
+            if (!excludePlayPause) const SizedBox(width: 12),
+            Expanded(
+              flex: 3,
+              child: _buildTextButton(
+                onPressed: _seekForward,
+                label: '60초 앞으로',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        // 2번째 줄: 재생속도
+        SizedBox(
+          width: 240,
+          child: _buildTextButton(
+            onPressed: _changePlaybackSpeed,
+            label: '재생 속도 (${_playbackSpeed}x)',
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 재생/일시정지 버튼
+  Widget _buildPlayPauseButton() {
+    return Semantics(
+      label: _isPlaying ? "일시정지" : "재생",
+      button: true,
+      child: ElevatedButton(
+        onPressed: _togglePlayPause,
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Colors.white, width: 3),
+          ),
+          textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+        ),
+        child: Text(
+          _isPlaying ? '일시정지' : '재생',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+        ),
+      ),
+    );
+  }
+
+  /// 텍스트 기반 컨트롤 버튼
+  Widget _buildTextButton({
+    required VoidCallback onPressed,
+    required String label,
+    String? hint,
+  }) {
+    return Semantics(
+      label: label,
+      hint: hint,
+      button: true,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: Colors.white, width: 3),
+          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
     );
   }
 }

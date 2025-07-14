@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../models/book.dart';
 import '../constants.dart';
 
@@ -21,7 +22,9 @@ class BookService {
       final response = await _dio.get(url);
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
-        print('서버에서 받아온 책 목록: $data');
+        if (kDebugMode) {
+          debugPrint('서버에서 받아온 책 목록: $data');
+        }
         return data.map((json) => Book.fromJson(json)).toList();
       } else {
         throw Exception('책 목록을 불러오지 못했습니다');

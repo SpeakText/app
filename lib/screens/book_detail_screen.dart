@@ -1,12 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/book.dart';
-import 'audio_player_screen.dart';
-import '../services/auth_service.dart';
-import '../utils/ui_utils.dart';
 import '../services/book_download_service.dart';
+import 'audio_player_screen.dart';
 
-/// 책 상세 페이지: 표지, 제목, 작가, 다운로드 및 오프라인 재생 지원
 class BookDetailScreen extends StatefulWidget {
   final Book book;
   const BookDetailScreen({super.key, required this.book});
@@ -16,313 +12,368 @@ class BookDetailScreen extends StatefulWidget {
 }
 
 class _BookDetailScreenState extends State<BookDetailScreen> {
-  double _progress = 0.0;
-  bool _downloading = false;
-  bool _downloaded = false;
-  String? _localFilePath;
-  final AuthService _authService = AuthService();
   final BookDownloadService _downloadService = BookDownloadService();
+  bool _isDownloaded = false;
+  bool _isDownloading = false;
+  bool _isCheckingDownload = true;
+  bool _showDownloadComplete = false;
 
   @override
   void initState() {
     super.initState();
-    _checkDownloaded();
+    _checkDownloadStatus();
   }
 
-  Future<void> _checkDownloaded() async {
-    final downloaded = await _downloadService.isBookDownloaded(widget.book);
-    if (downloaded) {
-      final path = await _downloadService.getAudioFilePath(widget.book);
+  Future<void> _checkDownloadStatus() async {
+    try {
+      final isDownloaded = await _downloadService.isBookDownloaded(widget.book);
       setState(() {
-        _downloaded = true;
-        _localFilePath = path;
-        _progress = 1.0;
+        _isDownloaded = isDownloaded;
+        _isCheckingDownload = false;
+        _showDownloadComplete = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isCheckingDownload = false;
       });
     }
   }
 
-  Future<void> _deleteAudioBook() async {
-    await _downloadService.deleteAudioBook(widget.book);
+  Future<void> _downloadBook() async {
     setState(() {
-      _downloaded = false;
-      _localFilePath = null;
-      _progress = 0.0;
-    });
-    showAppSnackBar(context, '오디오북이 삭제되었습니다.');
-  }
-
-  Future<void> _downloadAudio() async {
-    setState(() {
-      _downloading = true;
-      _progress = 0.0;
+      _isDownloading = true;
+      _showDownloadComplete = false;
     });
     try {
-      final savePath = await _downloadService.downloadAudio(widget.book);
-      if (savePath != null) {
+      final audioPath = await _downloadService.downloadAudio(widget.book);
+      if (audioPath != null) {
         await _downloadService.downloadBookContentAndVoiceInfo(widget.book);
         await _downloadService.saveBookToLibrary(
           book: widget.book,
-          audioPath: savePath,
+          audioPath: audioPath,
         );
         setState(() {
-          _downloaded = true;
-          _localFilePath = savePath;
-          _progress = 1.0;
+          _isDownloaded = true;
+          _isDownloading = false;
+          _showDownloadComplete = true;
         });
       } else {
-        throw Exception('voicePath가 응답에 없습니다');
+        throw Exception('다운로드 실패');
       }
     } catch (e) {
-      showAppSnackBar(context, '다운로드 실패: $e');
-    } finally {
       setState(() {
-        _downloading = false;
+        _isDownloading = false;
       });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('다운로드 중 문제가 발생했습니다. 나중에 다시 시도해주세요.')),
+        );
+      }
     }
   }
 
-  void _goToPlayer() {
-    if (_localFilePath != null && File(_localFilePath!).existsSync()) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder:
-              (_) => AudioPlayerScreen(
-                filePath: _localFilePath!,
-                title: widget.book.title,
-                author: widget.book.authorName,
-              ),
-        ),
-      );
-    }
-  }
-
-  Widget _buildCover() {
-    final fileName = widget.book.coverUrl.split('/').last;
-    final assetPath = 'assets/$fileName';
-    return Semantics(
-      label: '책 표지: ${widget.book.title}',
-      child: Container(
-        margin: const EdgeInsets.only(top: 32, bottom: 24),
-        alignment: Alignment.topCenter,
-        child: Material(
-          elevation: 8,
-          borderRadius: BorderRadius.circular(24),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: Image.asset(
-              assetPath,
-              width: 220,
-              height: 320,
-              fit: BoxFit.cover,
-              semanticLabel: '${widget.book.title} 표지 이미지',
-              errorBuilder:
-                  (context, error, stackTrace) => Semantics(
-                    label: '표지 이미지 없음',
-                    child: Container(
-                      width: 220,
-                      height: 320,
-                      color: Color(0xFFD0D0D0),
-                      child: const Icon(Icons.broken_image, size: 48),
-                    ),
-                  ),
-            ),
-          ),
-        ),
+  void _playBook() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AudioPlayerScreen(book: widget.book),
       ),
     );
   }
 
-  Widget _buildTitleAuthor() {
-    return Column(
-      children: [
-        Text(
-          widget.book.title,
-          style: Theme.of(context).textTheme.headlineSmall,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          widget.book.authorName,
-          style: Theme.of(context).textTheme.titleMedium,
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionButtons() {
-    final buttonStyle = ElevatedButton.styleFrom(
-      minimumSize: const Size.fromHeight(54),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-      elevation: 2,
-    );
-    if (!_downloaded && !_downloading) {
-      return Row(
-        children: [
-          Expanded(
-            flex: 7,
-            child: Semantics(
-              button: true,
-              label: '오디오북 다운로드',
-              child: ElevatedButton.icon(
-                onPressed: _downloadAudio,
-                icon: const Icon(Icons.download),
-                label: const Text('오디오북 다운로드'),
-                style: buttonStyle.copyWith(
-                  backgroundColor: WidgetStateProperty.all(Color(0xFF4A4A4A)),
-                  foregroundColor: WidgetStateProperty.all(Color(0xFFF5F5F5)),
-                ),
+  Future<void> _deleteBook() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: Colors.black,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: Colors.white, width: 2),
+            ),
+            title: const Text('오디오북 삭제', style: TextStyle(color: Colors.white)),
+            content: const Text(
+              '이 오디오북의 오디오 파일을 삭제하시겠습니까?',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            flex: 3,
-            child: Semantics(
-              button: true,
-              label: '삭제 비활성화',
-              child: ElevatedButton.icon(
-                onPressed: null,
-                icon: const Icon(Icons.delete),
-                label: const Text('삭제'),
-                style: buttonStyle.copyWith(
-                  backgroundColor: WidgetStateProperty.all(Color(0xFFD0D0D0)),
-                  foregroundColor: WidgetStateProperty.all(Color(0xFFF5F5F5)),
+            actions: [
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white, width: 2),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text(
+                  '취소',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
-            ),
-          ),
-        ],
-      );
-    } else if (_downloading) {
-      return Column(
-        children: [
-          const Text('다운로드 중...'),
-          const SizedBox(height: 8),
-          LinearProgressIndicator(value: _progress),
-          const SizedBox(height: 8),
-          Text('${(_progress * 100).toStringAsFixed(0)}%'),
-        ],
-      );
-    } else if (_downloaded) {
-      return Row(
-        children: [
-          Expanded(
-            flex: 7,
-            child: Semantics(
-              button: true,
-              label: '오디오북 재생',
-              child: ElevatedButton.icon(
-                onPressed: _goToPlayer,
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('오디오북 재생'),
-                style: buttonStyle.copyWith(
-                  backgroundColor: WidgetStateProperty.all(Color(0xFF4A4A4A)),
-                  foregroundColor: WidgetStateProperty.all(Color(0xFFF5F5F5)),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white, width: 2),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            flex: 3,
-            child: Semantics(
-              button: true,
-              label: '오디오북 삭제',
-              child: ElevatedButton.icon(
-                onPressed: _deleteAudioBook,
-                icon: const Icon(Icons.delete),
-                label: const Text('삭제'),
-                style: buttonStyle.copyWith(
-                  backgroundColor: WidgetStateProperty.all(Color(0xFFD32F2F)),
-                  foregroundColor: WidgetStateProperty.all(Color(0xFFF5F5F5)),
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text(
+                  '삭제',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildDescription() {
-    // 실제로는 Book 모델에 description 필드가 있으면 그걸 사용하세요.
-    // 여기서는 예시로 고정 텍스트 사용
-    return Padding(
-      padding: const EdgeInsets.only(top: 32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Text(
-                '책 소개',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF4A4A4A),
-                ),
-              ),
-              const SizedBox(width: 18),
-              Row(
-                children: const [
-                  Icon(Icons.star, color: Color(0xFFFFD600), size: 22),
-                  Icon(Icons.star, color: Color(0xFFFFD600), size: 22),
-                  Icon(Icons.star, color: Color(0xFFFFD600), size: 22),
-                  Icon(Icons.star, color: Color(0xFFFFD600), size: 22),
-                  Icon(Icons.star_half, color: Color(0xFFFFD600), size: 22),
-                  SizedBox(width: 8),
-                  Text('4.5/5.0', style: TextStyle(fontSize: 15)),
-                ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const Text(
-            '완벽한 알리바이를 만든 천재 수학자 이시가미 데츠야와 그 알리바이를 파헤치는 천재 물리학자이자 "탐정 갈릴레오"란 별명을 가진 유카와 마나부의 대결을 풀어내고 있다. 사랑과 헌신이라는 고전적이며 낭만적인 테제를 따르고 있는게 특징이다.',
-            style: TextStyle(
-              fontSize: 15,
-              color: Color(0xFF333333),
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
     );
+    if (confirmed == true) {
+      setState(() {
+        _isCheckingDownload = true;
+        _showDownloadComplete = false;
+      });
+      await _downloadService.deleteAudioBook(widget.book);
+      setState(() {
+        _isDownloaded = false;
+        _isCheckingDownload = false;
+        _showDownloadComplete = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('오디오북이 삭제되었습니다.')));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text(
-          '오디오북 상세페이지',
-          style: TextStyle(
-            color: Color(0xFF4A4A4A),
-            fontWeight: FontWeight.bold,
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        leading: Semantics(
+          label: '뒤로 가기 버튼',
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
           ),
         ),
-        backgroundColor: Color(0xFFF5F5F5),
-        iconTheme: const IconThemeData(color: Color(0xFFA0A0A0)),
+        title: const Text(
+          '책 상세정보',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
         elevation: 0,
       ),
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildCover(),
-              _buildTitleAuthor(),
-              _buildDescription(),
-              const SizedBox(height: 32),
-              _buildActionButtons(),
-            ],
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Card(
+            color: Colors.black,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: Colors.white, width: 3),
+            ),
+            margin: const EdgeInsets.symmetric(vertical: 16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 책 표지
+                  Center(
+                    child: Container(
+                      width: 140,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.grey[900],
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child:
+                          widget.book.coverUrl.isNotEmpty
+                              ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.asset(
+                                  'assets/${widget.book.coverUrl}',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
+                                      Icons.book,
+                                      size: 80,
+                                      color: Colors.white,
+                                    );
+                                  },
+                                ),
+                              )
+                              : Icon(Icons.book, size: 80, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // 제목
+                  Text(
+                    widget.book.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 28,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  // 저자
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.person_outline,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '저자: ${widget.book.authorName}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  // 설명
+                  Text(
+                    '책 소개',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 22,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    widget.book.description.isNotEmpty
+                        ? widget.book.description
+                        : '이 책에 대한 자세한 설명은 준비 중입니다.',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      height: 1.6,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  // 버튼
+                  if (_isCheckingDownload)
+                    const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  if (!_isCheckingDownload && !_isDownloaded)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          textStyle: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(
+                              color: Colors.white,
+                              width: 2,
+                            ),
+                          ),
+                          elevation: 4,
+                        ),
+                        onPressed: _isDownloading ? null : _downloadBook,
+                        icon:
+                            _isDownloading
+                                ? const SizedBox.shrink()
+                                : const Icon(Icons.download_outlined),
+                        label:
+                            _isDownloading
+                                ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.black,
+                                    ),
+                                  ),
+                                )
+                                : const Text('오디오북 다운로드'),
+                      ),
+                    ),
+                  if (!_isCheckingDownload && _isDownloaded)
+                    Column(
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black,
+                              textStyle: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: const BorderSide(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                              elevation: 4,
+                            ),
+                            onPressed: _playBook,
+                            icon: const Icon(Icons.play_arrow),
+                            label: const Text('오디오북 재생'),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                              textStyle: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: const BorderSide(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                              elevation: 4,
+                            ),
+                            onPressed: _deleteBook,
+                            icon: const Icon(Icons.delete_outline),
+                            label: const Text('오디오북 삭제'),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

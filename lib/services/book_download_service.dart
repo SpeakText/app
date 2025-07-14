@@ -65,6 +65,49 @@ class BookDownloadService {
     }
   }
 
+  Future<void> downloadBookScript(Book book) async {
+    final dio = _authService.dio;
+    final id = book.identificationNumber;
+    List<String> allSentences = [];
+    int totalIndex = 1;
+    int readingIndex = 1;
+    bool first = true;
+    do {
+      final response = await dio.get('$baseUrl/api/script/$id/$readingIndex');
+      final data = response.data;
+      if (first) {
+        totalIndex = data['totalIndex'] as int;
+        first = false;
+      }
+      final contents = data['contents'] as List;
+      allSentences.addAll(contents.map((e) => e['utterance'] as String));
+      readingIndex += 100;
+    } while (readingIndex <= totalIndex);
+    final dir = await getApplicationDocumentsDirectory();
+    final sentencesFile = File('${dir.path}/${id}_sentences.json');
+    await sentencesFile.writeAsString(jsonEncode(allSentences));
+  }
+
+  // 음성 길이 정보 수신 기능 (현재 사용하지 않음)
+  /*
+  Future<void> downloadVoiceLengthInfo(Book book) async {
+    final dio = _authService.dio;
+    final id = book.identificationNumber;
+    final voiceRes = await dio.get('$baseUrl/api/voice/$id/voice-length-info');
+    final List<int> voiceLengthInfo =
+        (voiceRes.data['voiceLengthInfo'] as String)
+            .replaceAll('[', '')
+            .replaceAll(']', '')
+            .split(',')
+            .map((e) => int.parse(e.trim()))
+            .toList();
+    final dir = await getApplicationDocumentsDirectory();
+    final voiceFile = File('${dir.path}/${id}_voice_length.json');
+    await voiceFile.writeAsString(jsonEncode(voiceLengthInfo));
+  }
+  */
+
+  // 기존 downloadBookContentAndVoiceInfo는 분리된 기능을 호출하도록 수정 필요 (호출부에서 분리된 함수 사용 권장)
   Future<void> downloadBookContentAndVoiceInfo(Book book) async {
     final dio = _authService.dio;
     final id = book.identificationNumber;
@@ -106,7 +149,7 @@ class BookDownloadService {
     );
     if (response.statusCode == 200 && response.data['voicePath'] != null) {
       final fileName = '${book.identificationNumber}_merged.mp3';
-      final assetPath = 'assets/$fileName';
+      final assetPath = 'assets/audio/$fileName';
       final dir = await getApplicationDocumentsDirectory();
       final savePath = '${dir.path}/$fileName';
       final byteData = await rootBundle.load(assetPath);
