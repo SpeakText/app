@@ -73,11 +73,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('설정'),
+        backgroundColor: Colors.black,
+        title: const Text('설정', style: TextStyle(color: Colors.white)),
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
         ),
       ),
       body: ListView(
@@ -86,11 +88,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // 계정 섹션
           _buildSectionHeader('계정'),
           _buildAccountCard(),
-          const SizedBox(height: 24),
-
-          // 앱 정보 섹션
-          _buildSectionHeader('앱 정보'),
-          _buildAppInfoCard(),
         ],
       ),
     );
@@ -106,7 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: Colors.grey[700],
+            color: Colors.white,
           ),
         ),
       ),
@@ -118,7 +115,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isLoggedIn = _authService.isLoggedIn;
 
     return Card(
-      elevation: 2,
+      color: Colors.black,
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Colors.white, width: 2),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -126,7 +128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             // 로그인 상태 표시
             Semantics(
-              label: "현재 계정 상태: ${isLoggedIn ? '로그인됨' : '로그인되지 않음'}",
+              label: "현재 계정 상태:  [${isLoggedIn ? '로그인됨' : '로그인되지 않음'}",
               child: ExcludeSemantics(
                 child: Row(
                   children: [
@@ -135,7 +137,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ? Icons.account_circle
                           : Icons.account_circle_outlined,
                       size: 24,
-                      color: isLoggedIn ? Colors.green[600] : Colors.grey[500],
+                      color: isLoggedIn ? Colors.green[400] : Colors.grey[500],
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -145,12 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           context,
                         ).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color:
-                              isLoggedIn
-                                  ? Colors.green.shade700
-                                  : Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface.withOpacity(0.7),
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -172,12 +169,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: ElevatedButton(
                           onPressed: _handleLogout,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Theme.of(context).colorScheme.errorContainer,
-                            foregroundColor:
-                                Theme.of(context).colorScheme.error,
+                            backgroundColor: Colors.red[700],
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          child: const Text('로그아웃'),
+                          child: const Text(
+                            '로그아웃',
+                            style: TextStyle(color: Colors.white),
+                          ),
                         ),
                       )
                       : Semantics(
@@ -186,7 +187,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         button: true,
                         child: ElevatedButton(
                           onPressed: _navigateToAuth,
-                          child: const Text('로그인'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            '로그인',
+                            style: TextStyle(color: Colors.black),
+                          ),
                         ),
                       ),
             ),
